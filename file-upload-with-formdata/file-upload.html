@@ -1,0 +1,84 @@
+<html>
+   
+   <head>
+      <script src = "http://ajax.googleapis.com/ajax/libs/angularjs/1.3.14/angular.min.js"></script>
+   </head>
+   
+   <body ng-app = "myApp">
+	
+      <div ng-controller = "myCtrl">
+         <input type = "file" file-model = "myFile"/>
+         <button ng-click = "uploadFile()">upload me</button>
+      </div>
+      
+      <script>
+         var myApp = angular.module('myApp', []);
+         
+         myApp.directive('fileModel', ['$parse', function ($parse) {
+            return {
+               restrict: 'A',
+               link: function(scope, element, attrs) {
+                  var model = $parse(attrs.fileModel);
+                  var modelSetter = model.assign;
+                  
+                  element.bind('change', function(){
+                     scope.$apply(function(){
+                        modelSetter(scope, element[0].files[0]);
+                     });
+                  });
+               }
+            };
+         }]);
+      
+         myApp.service('fileUpload', ['$http', function ($http) {
+            this.uploadFileToUrl = function(file, uploadUrl){
+			
+               var formData = new FormData();
+			   
+			   var fileMeta= {
+					fileName:'test.txt',
+					fileType:'tsv',
+					delimiter:',',
+					headerAvailable:'false',
+					includePiiInfo:'true'
+			   };		 
+			   
+			   var fileMetaBlob = new Blob([angular.toJson(fileMeta)], { // fileMeta is a JSON obj
+					type: 'application/json'
+				});
+				
+				formData.append('inFile', file); // First part: application/octet-stream
+				formData.append('fileMetadata', fileMetaBlob); // Second part: application/json
+				
+            
+               $http.post(uploadUrl, formData, {
+                  transformRequest: angular.identity,
+                  headers: {'Content-Type': undefined}
+               })
+            
+               .success(function(){
+					alert('File uploaded successfully');
+               })
+            
+               .error(function(){
+					alert('Error uploading file');
+               });
+            }
+         }]);
+      
+         myApp.controller('myCtrl', ['$scope', 'fileUpload', function($scope, fileUpload){
+            $scope.uploadFile = function(){
+               var file = $scope.myFile;
+               
+               console.log('file is ' );
+               console.dir(file);
+               
+               var uploadUrl = "http://<url_to_upload_the_file>";
+               fileUpload.uploadFileToUrl(file, uploadUrl);
+            };
+         }]);
+			
+      </script>
+      
+   </body>
+</html>
